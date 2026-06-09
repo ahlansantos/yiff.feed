@@ -115,3 +115,11 @@ create policy "Users can follow" on follows
 -- ------------------------------------------------------------
 
 alter table profiles add column if not exists bio text;
+
+-- ------------------------------------------------------------
+-- 7. Email-free auth (username + password) recovery token.
+--    Stores only a SHA-256 hash of the one-time recovery code
+--    shown to the user at signup — never the plaintext code.
+-- ------------------------------------------------------------
+
+alter table profiles add column if not exists recovery_token_hash text;

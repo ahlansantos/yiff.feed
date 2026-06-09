@@ -34,7 +34,9 @@ export async function GET(request) {
       // Derive a public, non-PII username. Prefer the GitHub handle;
       // never fall back to the email address (it would be exposed on
       // the public profile URL). Use a short random suffix instead.
-      const handle = data.user.user_metadata?.user_name
+      const meta = data.user.user_metadata ?? {}
+      // GitHub exposes `user_name`; Discord exposes `name` / `preferred_username`.
+      const handle = meta.user_name || meta.preferred_username || meta.name
       const username =
         handle || `furry_${data.user.id.replace(/-/g, '').slice(0, 8)}`
 
@@ -42,8 +44,8 @@ export async function GET(request) {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         username,
-        display_name: data.user.user_metadata?.full_name,
-        avatar_url: data.user.user_metadata?.avatar_url,
+        display_name: meta.full_name || meta.global_name || meta.name,
+        avatar_url: meta.avatar_url || meta.picture,
       }, { onConflict: 'id', ignoreDuplicates: true })
 
       return NextResponse.redirect(`${baseUrl}/`)

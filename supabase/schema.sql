@@ -10,6 +10,7 @@ create table if not exists profiles (
   fursona_species text,
   bio text,
   avatar_url text,
+  recovery_token_hash text,
   created_at timestamptz default now()
 );
 
