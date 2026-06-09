@@ -1,12 +1,12 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import { validateUploadFile } from "@/lib/posts";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
-export default function PostComposer({ currentUser, onPost }) {
+export default function PostComposer({ currentUser, onPost, autoOpen }) {
   const [content, setContent] = useState("");
   const [media, setMedia] = useState(null);
   const [isNsfw, setIsNsfw] = useState(false);
@@ -14,7 +14,17 @@ export default function PostComposer({ currentUser, onPost }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef();
+  const textRef = useRef();
   const supabase = createClient();
+
+  // When the mobile "+" button bumps `autoOpen`, scroll the composer into
+  // view, focus it, and pop the photo/video picker straight away.
+  useEffect(() => {
+    if (!autoOpen) return;
+    textRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    textRef.current?.focus();
+    fileRef.current?.click();
+  }, [autoOpen]);
 
   function handleFileChange(e) {
     const file = e.target.files?.[0];
@@ -95,6 +105,7 @@ export default function PostComposer({ currentUser, onPost }) {
         <div className="flex-1 flex flex-col gap-3">
           <textarea
             id="compose-trigger"
+            ref={textRef}
             className="bg-transparent resize-none outline-none text-sm placeholder:text-muted-foreground min-h-[72px] leading-relaxed"
             placeholder="What's on your mind?"
             value={content}

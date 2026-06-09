@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import Feed from "@/components/Feed";
 import VideoFeed from "@/components/VideoFeed";
 import RightPanel from "@/components/RightPanel";
+import MobileNav from "@/components/MobileNav";
 import AuthModal from "@/components/AuthModal";
 import Card from "@/components/ui/Card";
 
@@ -17,6 +18,8 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("foryou");
   const [authModal, setAuthModal] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Bumped each time the mobile "+" is tapped, to (re)open the composer.
+  const [composeSignal, setComposeSignal] = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
@@ -64,6 +67,17 @@ export default function HomePage() {
     setActiveTab(tab);
   }
 
+  // Mobile "+": jump to the Discover feed and open the composer. If logged
+  // out, prompt to sign in instead.
+  function requestCompose() {
+    if (!user) {
+      openAuth("login");
+      return;
+    }
+    setActiveTab("foryou");
+    setComposeSignal((n) => n + 1);
+  }
+
   const feedMode = activeTab === "following" ? "following" : "foryou";
   const tabLabel = NAV_TABS.find((t) => t.id === activeTab)?.label ?? "Feed";
 
@@ -81,21 +95,6 @@ export default function HomePage() {
         <header className="surface px-4 py-3 md:hidden flex items-center justify-between">
           <span className="text-lg font-semibold">yiff.feed</span>
         </header>
-
-        <Card className="p-1.5 flex gap-1 md:hidden overflow-x-auto">
-          {NAV_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => changeTab(tab.id)}
-              className={cn(
-                "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium",
-                navItemClass(activeTab === tab.id)
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </Card>
 
         <Card className="px-4 py-3 hidden md:flex items-center justify-between">
           <h2 className="text-base font-semibold">{tabLabel}</h2>
@@ -129,28 +128,21 @@ export default function HomePage() {
             currentUser={profile}
             mode={feedMode}
             onAuthRequired={() => openAuth("login")}
+            openComposer={composeSignal}
           />
         )}
       </main>
 
       <RightPanel onAuthClick={openAuth} currentUser={profile || user} />
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card border-t border-border flex px-2 py-1">
-        {NAV_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => changeTab(tab.id)}
-            className={cn(
-              "flex-1 py-2 text-xs font-medium rounded-lg transition-colors",
-              activeTab === tab.id
-                ? "text-accent"
-                : "text-muted-foreground"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <MobileNav
+        user={user}
+        profile={profile}
+        activeTab={activeTab}
+        onTabChange={changeTab}
+        onCompose={requestCompose}
+        onAuthClick={openAuth}
+      />
 
       {authModal && (
         <AuthModal

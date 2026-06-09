@@ -6,7 +6,7 @@ import Post from "./Post";
 import PostComposer from "./PostComposer";
 import Card from "./ui/Card";
 
-export default function Feed({ currentUser, mode, onAuthRequired }) {
+export default function Feed({ currentUser, mode, onAuthRequired, openComposer }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -80,7 +80,11 @@ export default function Feed({ currentUser, mode, onAuthRequired }) {
     <div className="flex flex-col gap-4">
       {currentUser && (
         <Card className="overflow-hidden">
-          <PostComposer currentUser={currentUser} onPost={handleNewPost} />
+          <PostComposer
+            currentUser={currentUser}
+            onPost={handleNewPost}
+            autoOpen={openComposer}
+          />
         </Card>
       )}
       {posts.length === 0 ? (
