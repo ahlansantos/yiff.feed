@@ -109,3 +109,9 @@ alter table follows add constraint no_self_follow check (follower_id <> followin
 drop policy if exists "Users can follow" on follows;
 create policy "Users can follow" on follows
   for insert with check (auth.uid() = follower_id and follower_id <> following_id);
+
+-- ------------------------------------------------------------
+-- 6. Profile bio
+-- ------------------------------------------------------------
+
+alter table profiles add column if not exists bio text;

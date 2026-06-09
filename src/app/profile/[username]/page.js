@@ -35,6 +35,7 @@ export default function ProfilePage() {
     display_name: "",
     fursona_name: "",
     fursona_species: "",
+    bio: "",
   });
   const avatarInputRef = useRef(null);
   const supabase = createClient();
@@ -120,6 +121,7 @@ export default function ProfilePage() {
       display_name: profile.display_name || "",
       fursona_name: profile.fursona_name || "",
       fursona_species: profile.fursona_species || "",
+      bio: profile.bio || "",
     });
     setEditing(true);
   }
@@ -136,6 +138,7 @@ export default function ProfilePage() {
     const nextDisplay = form.display_name.trim();
     const nextFursona = form.fursona_name.trim();
     const nextSpecies = form.fursona_species.trim();
+    const nextBio = form.bio.trim();
 
     if (!nextUsername) {
       setEditError("Username can't be empty");
@@ -168,6 +171,7 @@ export default function ProfilePage() {
       display_name: nextDisplay || null,
       fursona_name: nextFursona || null,
       fursona_species: nextSpecies || null,
+      bio: nextBio || null,
     };
 
     const { error: updateError } = await supabase
@@ -322,6 +326,12 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {!editing && profile.bio && (
+          <p className="text-sm leading-relaxed mt-4 whitespace-pre-wrap break-words">
+            {profile.bio}
+          </p>
+        )}
+
         {avatarError && (
           <p className="text-xs text-destructive mt-3">{avatarError}</p>
         )}
@@ -359,6 +369,20 @@ export default function ProfilePage() {
                 value={form.fursona_name}
                 onChange={(e) => setForm((f) => ({ ...f, fursona_name: e.target.value }))}
                 placeholder="e.g. Kira"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Bio</span>
+                <span className="tabular-nums">{300 - form.bio.length}</span>
+              </span>
+              <textarea
+                className={cn(editInputClass, "min-h-[72px] resize-none leading-relaxed")}
+                value={form.bio}
+                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                placeholder="Tell people about yourself…"
+                maxLength={300}
               />
             </label>
 
@@ -412,6 +436,16 @@ export default function ProfilePage() {
               <span><strong>{followerCount}</strong> <span className="text-muted-foreground">followers</span></span>
               <span><strong>{followingCount}</strong> <span className="text-muted-foreground">following</span></span>
             </div>
+
+            {profile.created_at && (
+              <p className="text-xs text-muted-foreground mt-3">
+                Member since{" "}
+                {new Date(profile.created_at).toLocaleDateString("en-US", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            )}
 
             {isOwnProfile ? (
               <Button variant="outline" className="mt-4 w-full" onClick={startEditing}>

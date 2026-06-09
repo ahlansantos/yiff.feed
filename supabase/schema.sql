@@ -8,6 +8,7 @@ create table if not exists profiles (
   display_name text,
   fursona_name text,
   fursona_species text,
+  bio text,
   avatar_url text,
   created_at timestamptz default now()
 );

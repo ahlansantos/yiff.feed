@@ -6,6 +6,16 @@ export async function GET(request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
 
+  // Behind a proxy (Vercel), request.url can report an internal host.
+  // Prefer the forwarded host so redirects land on the real domain
+  // instead of localhost / an internal address.
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
+  const isLocal = process.env.NODE_ENV === 'development'
+  const baseUrl = isLocal || !forwardedHost
+    ? origin
+    : `${forwardedProto}://${forwardedHost}`
+
   if (code) {
     const cookieStore = await cookies()
     const supabase = createServerClientWithCookies({
@@ -36,9 +46,9 @@ export async function GET(request) {
         avatar_url: data.user.user_metadata?.avatar_url,
       }, { onConflict: 'id', ignoreDuplicates: true })
 
-      return NextResponse.redirect(`${origin}/`)
+      return NextResponse.redirect(`${baseUrl}/`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/`)
+  return NextResponse.redirect(`${baseUrl}/`)
 }
