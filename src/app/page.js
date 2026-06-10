@@ -9,6 +9,8 @@ import Feed from "@/components/Feed";
 import VideoFeed from "@/components/VideoFeed";
 import RightPanel from "@/components/RightPanel";
 import MobileNav from "@/components/MobileNav";
+import NotificationsBell from "@/components/NotificationsBell";
+import MessagesLink from "@/components/MessagesLink";
 import AuthModal from "@/components/AuthModal";
 import Card from "@/components/ui/Card";
 
@@ -94,6 +96,12 @@ export default function HomePage() {
       <main className="flex-1 max-w-[560px] min-h-[calc(100vh-2rem)] flex flex-col gap-4 pb-20 md:pb-4">
         <header className="surface px-4 py-3 md:hidden flex items-center justify-between">
           <span className="text-lg font-semibold">yiff.feed</span>
+          {user && (
+            <div className="flex items-center gap-1">
+              <NotificationsBell userId={user.id} />
+              <MessagesLink />
+            </div>
+          )}
         </header>
 
         <Card className="px-4 py-3 hidden md:flex items-center justify-between">

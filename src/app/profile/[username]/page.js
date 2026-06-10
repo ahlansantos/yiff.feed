@@ -9,10 +9,12 @@ import { cn } from "@/lib/utils";
 import { SPECIES_OPTIONS } from "@/lib/constants";
 import Post from "@/components/Post";
 import AuthModal from "@/components/AuthModal";
+import FollowListModal from "@/components/FollowListModal";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
 import SpeciesBadge from "@/components/ui/SpeciesBadge";
+import { getOrCreateConversation } from "@/lib/dm";
 
 export default function ProfilePage() {
   const { username } = useParams();
@@ -28,6 +30,9 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState(null);
   const [authModal, setAuthModal] = useState(null);
   const [editing, setEditing] = useState(false);
+  // "followers" | "following" | null — which follow list modal is open.
+  const [followList, setFollowList] = useState(null);
+  const [startingDm, setStartingDm] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
   const [form, setForm] = useState({
@@ -111,6 +116,23 @@ export default function ProfilePage() {
       await supabase.from("follows").insert({ follower_id: currentUser.id, following_id: profile.id });
       setIsFollowing(true);
       setFollowerCount((n) => n + 1);
+    }
+  }
+
+  // Start (or open) a DM thread with this profile, then go to /messages.
+  async function startConversation() {
+    if (!currentUser) {
+      setAuthModal("login");
+      return;
+    }
+    if (currentUser.id === profile.id) return;
+    setStartingDm(true);
+    try {
+      const convoId = await getOrCreateConversation(supabase, profile.id);
+      router.push(`/messages?c=${convoId}`);
+    } catch (err) {
+      console.error(err);
+      setStartingDm(false);
     }
   }
 
@@ -433,8 +455,20 @@ export default function ProfilePage() {
           <>
             <div className="flex gap-6 mt-5 text-sm">
               <span><strong>{posts.length}</strong> <span className="text-muted-foreground">posts</span></span>
-              <span><strong>{followerCount}</strong> <span className="text-muted-foreground">followers</span></span>
-              <span><strong>{followingCount}</strong> <span className="text-muted-foreground">following</span></span>
+              <button
+                onClick={() => setFollowList("followers")}
+                className="hover:underline"
+              >
+                <strong>{followerCount}</strong>{" "}
+                <span className="text-muted-foreground">followers</span>
+              </button>
+              <button
+                onClick={() => setFollowList("following")}
+                className="hover:underline"
+              >
+                <strong>{followingCount}</strong>{" "}
+                <span className="text-muted-foreground">following</span>
+              </button>
             </div>
 
             {profile.created_at && (
@@ -452,13 +486,23 @@ export default function ProfilePage() {
                 Edit profile
               </Button>
             ) : (
-              <Button
-                className="mt-4 w-full"
-                variant={isFollowing ? "outline" : "default"}
-                onClick={toggleFollow}
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </Button>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  className="flex-1"
+                  variant={isFollowing ? "outline" : "default"}
+                  onClick={toggleFollow}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={startConversation}
+                  disabled={startingDm}
+                >
+                  {startingDm ? "…" : "Message"}
+                </Button>
+              </div>
             )}
           </>
         )}
@@ -486,6 +530,14 @@ export default function ProfilePage() {
           mode={authModal}
           onClose={() => setAuthModal(null)}
           onSwitch={setAuthModal}
+        />
+      )}
+
+      {followList && (
+        <FollowListModal
+          profileId={profile.id}
+          mode={followList}
+          onClose={() => setFollowList(null)}
         />
       )}
     </div>

@@ -1,9 +1,11 @@
 "use client";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
+import NotificationsBell from "@/components/NotificationsBell";
 import { cn, navItemClass } from "@/lib/utils";
 import { NAV_TABS } from "@/lib/constants";
 
@@ -46,15 +48,38 @@ export default function Sidebar({ user, profile, onAuthClick, activeTab, onTabCh
         ))}
 
         {user && profile && (
-          <Link
-            href={`/profile/${profile.username}`}
-            className={cn(
-              "px-3 py-2.5 rounded-lg text-sm font-medium",
-              navItemClass(false)
-            )}
-          >
-            My Den
-          </Link>
+          <>
+            <Link
+              href={`/profile/${profile.username}`}
+              className={cn(
+                "px-3 py-2.5 rounded-lg text-sm font-medium",
+                navItemClass(false)
+              )}
+            >
+              My Den
+            </Link>
+
+            <Link
+              href="/messages"
+              className={cn(
+                "px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2",
+                navItemClass(false)
+              )}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Messages
+            </Link>
+
+            <div
+              className={cn(
+                "px-1 py-1 rounded-lg text-sm font-medium flex items-center gap-1",
+                navItemClass(false)
+              )}
+            >
+              <NotificationsBell userId={user.id} />
+              <span className="text-muted-foreground">Notifications</span>
+            </div>
+          </>
         )}
 
         <div className="mt-auto flex flex-col gap-3 pt-4">

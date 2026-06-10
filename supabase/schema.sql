@@ -54,6 +54,11 @@ create table if not exists comments (
   created_at timestamptz default now()
 );
 
+-- NOTE: Direct messages + notifications (conversations, messages,
+-- notifications tables, their RLS, triggers and realtime setup) live in
+-- supabase/migrations.sql section 8. That block is idempotent — run it
+-- here too after the tables above to get DMs and follow notifications.
+
 -- Row level security
 alter table profiles enable row level security;
 alter table posts enable row level security;
