@@ -19,7 +19,7 @@ export async function loadConversations(supabase, myId) {
   const { data: convos, error } = await supabase
     .from("conversations")
     .select(
-      "id, user_a, user_b, last_message_at, " +
+      "id, user_a, user_b, last_message_at, user_a_read_at, user_b_read_at, " +
         "a:profiles!conversations_user_a_fkey(id, username, fursona_name, avatar_url), " +
         "b:profiles!conversations_user_b_fkey(id, username, fursona_name, avatar_url)"
     )
@@ -27,11 +27,12 @@ export async function loadConversations(supabase, myId) {
 
   if (error) throw error;
 
-  // Normalize: expose `other` (the participant who isn't me) + last msg.
+  // Normalize: expose `other` (the participant who isn't me) + read state.
   const withOther = (convos || []).map((c) => ({
     id: c.id,
     last_message_at: c.last_message_at,
     other: c.user_a === myId ? c.b : c.a,
+    myReadAt: c.user_a === myId ? c.user_a_read_at : c.user_b_read_at,
   }));
 
   // Fetch the latest message for each conversation for a preview line.
@@ -81,4 +82,23 @@ export async function sendMessage(supabase, conversationId, senderId, content) {
     .single();
   if (error) throw error;
   return data;
+}
+
+// Mark a conversation as read for the current user. Updates the
+// user_a_read_at or user_b_read_at column depending on whether the
+// current user is user_a or user_b.
+export async function markConversationRead(supabase, conversationId, myId) {
+  // Fetch the conversation to determine which column to update.
+  const { data: convo } = await supabase
+    .from("conversations")
+    .select("user_a, user_b")
+    .eq("id", conversationId)
+    .single();
+  if (!convo) return;
+
+  const col = convo.user_a === myId ? "user_a_read_at" : "user_b_read_at";
+  await supabase
+    .from("conversations")
+    .update({ [col]: new Date().toISOString() })
+    .eq("id", conversationId);
 }

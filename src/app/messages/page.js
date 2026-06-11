@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
@@ -7,6 +7,7 @@ import {
   loadConversations,
   loadMessages,
   sendMessage,
+  markConversationRead,
 } from "@/lib/dm";
 import { cn, timeAgo } from "@/lib/utils";
 import Avatar from "@/components/ui/Avatar";
@@ -15,11 +16,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send } from "lucide-react";
 
 function MessagesInner() {
-  const supabase = createClient();
+  // Stable Supabase client — never recreated across renders.
+  const supabase = useRef(createClient()).current;
   const router = useRouter();
   const searchParams = useSearchParams();
-  // ?c=<conversationId> opens a specific thread (used when starting a DM
-  // from a profile).
+  // ?c=<conversationId> opens a specific thread.
   const activeId = searchParams.get("c");
 
   const [me, setMe] = useState(null);
@@ -48,7 +49,7 @@ function MessagesInner() {
       setConversations(convos);
       setLoading(false);
     })();
-  }, []);
+  }, [supabase, router]);
 
   // Load + subscribe to the active thread.
   useEffect(() => {
@@ -58,6 +59,8 @@ function MessagesInner() {
     (async () => {
       const msgs = await loadMessages(supabase, activeId);
       if (!cancelled) setMessages(msgs);
+      // Mark conversation read when the user opens it.
+      await markConversationRead(supabase, activeId, me.id);
     })();
 
     channelRef.current?.unsubscribe();
@@ -71,12 +74,16 @@ function MessagesInner() {
           table: "messages",
           filter: `conversation_id=eq.${activeId}`,
         },
-        (payload) => {
+        async (payload) => {
           setMessages((prev) =>
             prev.some((m) => m.id === payload.new.id)
               ? prev
               : [...prev, payload.new]
           );
+          // If the incoming message is from the other user, mark it read.
+          if (payload.new.sender_id !== me.id) {
+            await markConversationRead(supabase, activeId, me.id);
+          }
         }
       )
       .subscribe();
@@ -86,7 +93,7 @@ function MessagesInner() {
       cancelled = true;
       channel.unsubscribe();
     };
-  }, [activeId, me]);
+  }, [activeId, me, supabase]);
 
   // Keep the thread scrolled to the newest message.
   useEffect(() => {
@@ -165,31 +172,43 @@ function MessagesInner() {
                 Message to start one.
               </p>
             ) : (
-              conversations.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => openConversation(c.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
-                    c.id === activeId ? "bg-muted" : "hover:bg-muted"
-                  )}
-                >
-                  <Avatar src={c.other?.avatar_url} size={40} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">
-                      {c.other?.fursona_name || c.other?.username}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {c.lastMessage?.content || "Say hi 👋"}
-                    </p>
-                  </div>
-                  {c.lastMessage && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">
-                      {timeAgo(c.lastMessage.created_at)}
-                    </span>
-                  )}
-                </button>
-              ))
+              conversations.map((c) => {
+                const hasUnread =
+                  c.lastMessage &&
+                  c.lastMessage.sender_id !== me?.id &&
+                  (!c.myReadAt ||
+                    new Date(c.last_message_at) > new Date(c.myReadAt));
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => openConversation(c.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
+                      c.id === activeId ? "bg-muted" : "hover:bg-muted"
+                    )}
+                  >
+                    <Avatar src={c.other?.avatar_url} size={40} />
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-xs truncate", hasUnread ? "font-bold" : "font-semibold")}>
+                        {c.other?.fursona_name || c.other?.username}
+                      </p>
+                      <p className={cn("text-xs truncate", hasUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
+                        {c.lastMessage?.content || "Say hi 👋"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {c.lastMessage && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {timeAgo(c.lastMessage.created_at)}
+                        </span>
+                      )}
+                      {hasUnread && (
+                        <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </Card>

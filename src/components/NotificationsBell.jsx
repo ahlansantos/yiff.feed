@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { Bell, UserPlus } from "lucide-react";
@@ -7,21 +7,37 @@ import Avatar from "@/components/ui/Avatar";
 import { cn, timeAgo } from "@/lib/utils";
 
 // Bell icon with an unread badge + a dropdown of notifications.
-// Currently handles "follow" notifications; the shape is ready for
-// likes/comments later.
+// Handles "follow" notifications; shape is ready for likes/comments later.
 export default function NotificationsBell({ userId, className }) {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
-  const supabase = createClient();
+  // Stable Supabase client — never recreated across renders.
+  const supabase = useRef(createClient()).current;
   const channelRef = useRef(null);
   const wrapRef = useRef(null);
 
   const unread = items.filter((n) => !n.read).length;
 
+  // Defined with useCallback so the realtime callback always uses the
+  // latest version without needing to re-subscribe.
+  const load = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from("notifications")
+      .select(
+        "id, type, read, created_at, actor:profiles!notifications_actor_id_fkey(username, fursona_name, avatar_url)"
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setItems(data || []);
+  }, [supabase, userId]);
+
   useEffect(() => {
     if (!userId) return;
     load();
 
+    // Clean up any existing subscription before creating a new one.
     channelRef.current?.unsubscribe();
     const channel = supabase
       .channel(`notifications-${userId}`)
@@ -39,7 +55,7 @@ export default function NotificationsBell({ userId, className }) {
     channelRef.current = channel;
 
     return () => channel.unsubscribe();
-  }, [userId]);
+  }, [userId, load, supabase]);
 
   // Close the dropdown on outside click.
   useEffect(() => {
@@ -51,18 +67,6 @@ export default function NotificationsBell({ userId, className }) {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
-
-  async function load() {
-    const { data } = await supabase
-      .from("notifications")
-      .select(
-        "id, type, read, created_at, actor:profiles!notifications_actor_id_fkey(username, fursona_name, avatar_url)"
-      )
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    setItems(data || []);
-  }
 
   async function toggleOpen() {
     const next = !open;

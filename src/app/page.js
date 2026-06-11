@@ -99,7 +99,7 @@ export default function HomePage() {
           {user && (
             <div className="flex items-center gap-1">
               <NotificationsBell userId={user.id} />
-              <MessagesLink />
+              <MessagesLink userId={user?.id} />
             </div>
           )}
         </header>

@@ -1,16 +1,17 @@
 "use client";
+import { useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
 import NotificationsBell from "@/components/NotificationsBell";
+import MessagesLink from "@/components/MessagesLink";
 import { cn, navItemClass } from "@/lib/utils";
 import { NAV_TABS } from "@/lib/constants";
 
 export default function Sidebar({ user, profile, onAuthClick, activeTab, onTabChange }) {
-  const supabase = createClient();
+  const supabase = useRef(createClient()).current;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -59,16 +60,11 @@ export default function Sidebar({ user, profile, onAuthClick, activeTab, onTabCh
               My Den
             </Link>
 
-            <Link
-              href="/messages"
-              className={cn(
-                "px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2",
-                navItemClass(false)
-              )}
-            >
-              <MessageCircle className="w-4 h-4" />
-              Messages
-            </Link>
+            {/* Messages — uses MessagesLink so the unread badge is shared */}
+            <div className={cn("px-1 py-1 rounded-lg flex items-center gap-1", navItemClass(false))}>
+              <MessagesLink userId={user.id} />
+              <span className="text-sm font-medium text-muted-foreground">Messages</span>
+            </div>
 
             <div
               className={cn(
